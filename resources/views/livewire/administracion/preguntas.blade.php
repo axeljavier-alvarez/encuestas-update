@@ -1,4 +1,4 @@
-<div class="mx-auto w-full max-w-7xl px-2 sm:px-4 space-y-4">
+<div class="mx-auto w-full max-w-[1600px] px-2 sm:px-4 lg:px-6 space-y-4">
 
     <div
         class="overflow-hidden rounded-2xl bg-gradient-to-r from-slate-950 via-blue-950 to-indigo-900 px-6 py-5 text-white shadow-lg">
@@ -85,13 +85,87 @@
             </div>
 
             {{-- Resumen de preguntas predeterminadas activas --}}
-            <div class="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
-                <p class="text-xs font-semibold text-blue-900">
-                    Preguntas predeterminadas activas: {{ $totalPredeterminadas }} de 2
-                </p>
-                <p class="mt-1 text-xs text-blue-700">
-                    Espacios disponibles en cada plantilla: {{ 10 - $totalPredeterminadas }} de 10
-                </p>
+            {{-- Resumen general de preguntas --}}
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+
+                {{-- Preguntas activas --}}
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                                Preguntas activas
+                            </p>
+
+                            <p class="mt-2 text-3xl font-black text-emerald-800">
+                                {{ $totalActivas }}
+                            </p>
+
+                            <p class="mt-1 text-xs text-emerald-700">
+                                Disponibles para utilizar en encuestas
+                            </p>
+                        </div>
+
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
+                            <flux:icon.check-circle class="size-7 text-emerald-700" />
+                        </div>
+
+                    </div>
+                </div>
+
+                {{-- Preguntas inactivas --}}
+                <div class="rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wide text-red-700">
+                                Preguntas inactivas
+                            </p>
+
+                            <p class="mt-2 text-3xl font-black text-red-800">
+                                {{ $totalInactivas }}
+                            </p>
+
+                            <p class="mt-1 text-xs text-red-700">
+                                No disponibles para nuevas encuestas
+                            </p>
+                        </div>
+
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-100">
+                            <flux:icon.x-circle class="size-7 text-red-700" />
+                        </div>
+
+                    </div>
+                </div>
+
+                {{-- Preguntas predeterminadas --}}
+                <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wide text-blue-700">
+                                Preguntas predeterminadas
+                            </p>
+
+                            <p class="mt-2 text-3xl font-black text-blue-900">
+                                {{ $totalPredeterminadas }}
+                                <span class="text-base font-semibold text-blue-500">
+                                    / 2
+                                </span>
+                            </p>
+
+                            <p class="mt-1 text-xs text-blue-700">
+                                {{ 10 - $totalPredeterminadas }} espacios disponibles por plantilla
+                            </p>
+                        </div>
+
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100">
+                            <flux:icon.clipboard-document-list class="size-7 text-blue-700" />
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
 
             {{-- Buscador principal --}}
@@ -118,10 +192,8 @@
                         Limpiar filtros
                     </flux:button>
                 </div>
-
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-
-                    {{-- Factor --}}
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2"
+                    style="grid-template-columns: repeat(5, minmax(0, 1fr));">
                     <flux:select wire:model.live="filtroFactor" label="Factor">
                         <option value="">Todos los factores</option>
 
@@ -160,7 +232,12 @@
                         <option value="nps">Solo NPS</option>
                         <option value="no-nps">No NPS</option>
                     </flux:select>
-
+                    {{-- Filtro de preguntas predeterminadas --}}
+                    <flux:select wire:model.live="filtroPredeterminada" label="Pregunta predeterminada">
+                        <option value="todos">Todas las preguntas</option>
+                        <option value="predeterminadas">Solo predeterminadas</option>
+                        <option value="no-predeterminadas">No predeterminadas</option>
+                    </flux:select>
                 </div>
             </div>
 
@@ -212,7 +289,8 @@
                                     </flux:badge>
                                 @endif
                                 @if ($pregunta->es_predeterminada)
-                                    <flux:badge variant="pill" color="blue" size="sm">Predeterminada</flux:badge>
+                                    <flux:badge variant="pill" color="blue" size="sm">Predeterminada
+                                    </flux:badge>
                                 @endif
                             </div>
                         </flux:table.cell>
@@ -285,15 +363,21 @@
 
         <form wire:submit="guardar" class="space-y-4">
             <flux:input wire:model="codigo" label="Código de pregunta" placeholder="Ej. ATN-09" />
-            @error('codigo') <p class="text-xs font-bold text-red-600">{{ $message }}</p> @enderror
+            @error('codigo')
+                <p class="text-xs font-bold text-red-600">{{ $message }}</p>
+            @enderror
 
             <div class="rounded-xl border border-slate-200 p-3">
                 <p class="mb-2 text-sm font-semibold text-slate-800">¿La pregunta es obligatoria?</p>
                 <div class="flex gap-5">
-                    <label class="flex items-center gap-2 text-sm"><input type="radio" wire:model="obligatoria" value="1" class="accent-blue-700"> Sí</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="radio" wire:model="obligatoria" value="0" class="accent-blue-700"> No</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="radio" wire:model="obligatoria"
+                            value="1" class="accent-blue-700"> Sí</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="radio" wire:model="obligatoria"
+                            value="0" class="accent-blue-700"> No</label>
                 </div>
-                @error('obligatoria') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                @error('obligatoria')
+                    <p class="text-xs text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             {{-- Solo se puede configurar en preguntas existentes y activas.
@@ -307,11 +391,8 @@
                         Se permiten como máximo 2 preguntas predeterminadas activas.
                         Una pregunta predeterminada es obligatoria.
                     </p>
-                    <flux:checkbox
-                        wire:key="predeterminada-{{ $preguntaId }}"
-                        wire:model.live="es_predeterminada"
-                        label="Marcar como pregunta predeterminada"
-                    />
+                    <flux:checkbox wire:key="predeterminada-{{ $preguntaId }}" wire:model.live="es_predeterminada"
+                        label="Marcar como pregunta predeterminada" />
                     @if ($predeterminadaOriginal && !$es_predeterminada)
                         <p class="text-xs font-semibold text-amber-700">
                             Al guardar, esta pregunta dejará de ser predeterminada.
@@ -329,7 +410,9 @@
                     <option value="{{ $factor->id }}">{{ $factor->nombre }}</option>
                 @endforeach
             </flux:select>
-            @error('factorId') <p class="text-xs font-bold text-red-600">{{ $message }}</p> @enderror
+            @error('factorId')
+                <p class="text-xs font-bold text-red-600">{{ $message }}</p>
+            @enderror
 
             <flux:select wire:model="temaId" label="Tema" :disabled="!$factorId">
                 <option value="">Seleccione un tema</option>
@@ -337,11 +420,15 @@
                     <option value="{{ $tema->id }}">{{ $tema->nombre }}</option>
                 @endforeach
             </flux:select>
-            @error('temaId') <p class="text-xs font-bold text-red-600">{{ $message }}</p> @enderror
+            @error('temaId')
+                <p class="text-xs font-bold text-red-600">{{ $message }}</p>
+            @enderror
 
             <flux:textarea wire:model="texto" label="Texto de la pregunta" rows="3"
                 placeholder="Escriba la pregunta aquí..." :disabled="!$factorId" />
-            @error('texto') <p class="text-xs font-bold text-red-600">{{ $message }}</p> @enderror
+            @error('texto')
+                <p class="text-xs font-bold text-red-600">{{ $message }}</p>
+            @enderror
 
             {{-- Única incorporación a la interfaz original: varios tipos por pregunta --}}
             <div class="rounded-xl border border-slate-200 p-4 space-y-3">
@@ -353,11 +440,14 @@
                         + Agregar otro tipo de respuesta
                     </flux:button>
                 @endif
-                @error('configuraciones') <p class="text-xs font-bold text-red-600">{{ $message }}</p> @enderror
+                @error('configuraciones')
+                    <p class="text-xs font-bold text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             @foreach ($configuraciones as $clave => $config)
-                <div wire:key="configuracion-{{ $clave }}" class="space-y-3 rounded-xl border border-slate-200 p-4">
+                <div wire:key="configuracion-{{ $clave }}"
+                    class="space-y-3 rounded-xl border border-slate-200 p-4">
                     <div class="flex items-center justify-between gap-3">
                         <p class="text-sm font-bold text-slate-900">Tipo de respuesta {{ $loop->iteration }}</p>
                         @if (count($configuraciones) > 1)
@@ -379,7 +469,8 @@
 
                     @if ($this->esEscala($clave))
                         <div class="space-y-3 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
-                            <flux:select wire:model.live="configuraciones.{{ $clave }}.escala_id" label="Escala disponible">
+                            <flux:select wire:model.live="configuraciones.{{ $clave }}.escala_id"
+                                label="Escala disponible">
                                 <option value="">Seleccione una escala</option>
                                 @foreach ($escalas as $escala)
                                     <option value="{{ $escala->id }}">{{ $escala->nombre }}</option>
@@ -394,15 +485,18 @@
                                     <p class="text-xs font-bold text-slate-700">Vista previa de la escala</p>
                                     <div class="flex flex-wrap gap-1">
                                         @foreach (range($escalaVista->minimo, $escalaVista->maximo) as $numero)
-                                            <span class="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-xs font-semibold text-blue-800">{{ $numero }}</span>
+                                            <span
+                                                class="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-xs font-semibold text-blue-800">{{ $numero }}</span>
                                         @endforeach
                                     </div>
                                     <div class="flex flex-wrap gap-2">
                                         @if ($escalaVista->permite_no_sabe)
-                                            <span class="rounded-lg border border-slate-200 px-3 py-1 text-xs">No sabe</span>
+                                            <span class="rounded-lg border border-slate-200 px-3 py-1 text-xs">No
+                                                sabe</span>
                                         @endif
                                         @if ($escalaVista->permite_no_aplica)
-                                            <span class="rounded-lg border border-slate-200 px-3 py-1 text-xs">No aplica</span>
+                                            <span class="rounded-lg border border-slate-200 px-3 py-1 text-xs">No
+                                                aplica</span>
                                         @endif
                                     </div>
                                 </div>
@@ -413,7 +507,8 @@
                             <div class="flex items-center justify-between gap-3">
                                 <div>
                                     <p class="text-sm font-bold text-slate-900">Opciones de respuesta</p>
-                                    <p class="text-xs text-slate-500">Agregue al menos dos opciones. El valor es el código interno.</p>
+                                    <p class="text-xs text-slate-500">Agregue al menos dos opciones. El valor es el
+                                        código interno.</p>
                                 </div>
                                 <flux:button type="button" size="sm" variant="primary"
                                     wire:click="agregarOpcion({{ $clave }})">+ Agregar</flux:button>
@@ -425,14 +520,16 @@
                                 <div wire:key="opcion-{{ $clave }}-{{ $indice }}"
                                     class="grid grid-cols-1 gap-2 rounded-lg bg-slate-50 p-3 sm:grid-cols-[1fr_1.5fr_auto] sm:items-start">
                                     <div>
-                                        <flux:input wire:model="configuraciones.{{ $clave }}.opciones.{{ $indice }}.valor"
+                                        <flux:input
+                                            wire:model="configuraciones.{{ $clave }}.opciones.{{ $indice }}.valor"
                                             label="Valor" placeholder="ej. si" />
                                         @error('configuraciones.' . $clave . '.opciones.' . $indice . '.valor')
                                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                         @enderror
                                     </div>
                                     <div>
-                                        <flux:input wire:model="configuraciones.{{ $clave }}.opciones.{{ $indice }}.etiqueta"
+                                        <flux:input
+                                            wire:model="configuraciones.{{ $clave }}.opciones.{{ $indice }}.etiqueta"
                                             label="Etiqueta" placeholder="ej. Sí" />
                                         @error('configuraciones.' . $clave . '.opciones.' . $indice . '.etiqueta')
                                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -440,20 +537,25 @@
                                     </div>
                                     <div class="sm:pt-6">
                                         <flux:button type="button" variant="danger" size="sm"
-                                            wire:click="eliminarOpcion({{ $clave }}, {{ $indice }})">Quitar</flux:button>
+                                            wire:click="eliminarOpcion({{ $clave }}, {{ $indice }})">
+                                            Quitar</flux:button>
                                     </div>
                                     <div class="sm:col-span-3 flex flex-wrap gap-5 border-t border-slate-200 pt-3">
-                                        <flux:checkbox wire:model="configuraciones.{{ $clave }}.opciones.{{ $indice }}.es_excluyente"
+                                        <flux:checkbox
+                                            wire:model="configuraciones.{{ $clave }}.opciones.{{ $indice }}.es_excluyente"
                                             label="Es excluyente" />
-                                        <flux:checkbox wire:model.live="configuraciones.{{ $clave }}.opciones.{{ $indice }}.habilita_texto"
+                                        <flux:checkbox
+                                            wire:model.live="configuraciones.{{ $clave }}.opciones.{{ $indice }}.habilita_texto"
                                             label="Habilita texto" />
                                     </div>
                                     @if ($opcion['habilita_texto'] ?? false)
                                         <div class="sm:col-span-3">
-                                            <flux:input wire:model="configuraciones.{{ $clave }}.opciones.{{ $indice }}.etiqueta_texto_adicional"
+                                            <flux:input
+                                                wire:model="configuraciones.{{ $clave }}.opciones.{{ $indice }}.etiqueta_texto_adicional"
                                                 label="Etiqueta del texto adicional"
                                                 placeholder="Ej. ¿En qué red social se enteró?" />
-                                            @error('configuraciones.' . $clave . '.opciones.' . $indice . '.etiqueta_texto_adicional')
+                                            @error('configuraciones.' . $clave . '.opciones.' . $indice .
+                                                '.etiqueta_texto_adicional')
                                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                             @enderror
                                         </div>
@@ -465,10 +567,12 @@
                 </div>
             @endforeach
 
-            @if (collect($configuraciones)->keys()->contains(fn ($clave) => $this->esEscala((int) $clave)))
+            @if (collect($configuraciones)->keys()->contains(fn($clave) => $this->esEscala((int) $clave)))
                 <flux:checkbox wire:model="es_nps" label="Calcular NPS"
                     description="Marcar si esta pregunta es de tipo Net Promoter Score." :disabled="!$factorId" />
-                @error('es_nps') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                @error('es_nps')
+                    <p class="text-xs text-red-600">{{ $message }}</p>
+                @enderror
             @endif
 
             <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">

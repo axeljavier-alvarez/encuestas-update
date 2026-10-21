@@ -33,6 +33,8 @@ class Preguntas extends Component
     public string $filtroTema = '';
     public string $filtroTipo = '';
 
+    public string $filtroPredeterminada = 'todos';
+
     /** Cada configuración tiene su propio tipo, escala y opciones. */
     public array $configuraciones = [];
     public bool $variosTipos = false;
@@ -155,9 +157,11 @@ class Preguntas extends Component
             }
         }
         // Evita perder referencias si las plantillas seleccionan una configuración específica.
-        if (Schema::hasTable('plantilla_pregunta')
+        if (
+            Schema::hasTable('plantilla_pregunta')
             && Schema::hasColumn('plantilla_pregunta', 'pregunta_tipo_respuesta_id')
-            && DB::table('plantilla_pregunta')->where('pregunta_tipo_respuesta_id', $configuracion->id)->exists()) {
+            && DB::table('plantilla_pregunta')->where('pregunta_tipo_respuesta_id', $configuracion->id)->exists()
+        ) {
             throw ValidationException::withMessages([
                 'configuraciones' => 'No puede eliminar un tipo utilizado en una plantilla.',
             ]);
@@ -202,7 +206,7 @@ class Preguntas extends Component
             }
             $tiposUsados[] = $tipoId;
             if ($esSeleccion) {
-                $valores = array_map(fn ($op) => mb_strtolower(trim((string) ($op['valor'] ?? ''))), $config['opciones'] ?? []);
+                $valores = array_map(fn($op) => mb_strtolower(trim((string) ($op['valor'] ?? ''))), $config['opciones'] ?? []);
                 if (count($valores) !== count(array_unique($valores))) {
                     throw ValidationException::withMessages([$prefijo . '.opciones' => 'Los valores de las opciones no pueden repetirse dentro de este tipo.']);
                 }
@@ -247,7 +251,7 @@ class Preguntas extends Component
                 }
 
                 $totalOtras = $preguntasBloqueadas->filter(
-                    fn ($item) => $item->activo && $item->es_predeterminada && $item->id !== $pregunta->id
+                    fn($item) => $item->activo && $item->es_predeterminada && $item->id !== $pregunta->id
                 )->count();
 
                 if ($totalOtras >= 2) {
@@ -344,7 +348,7 @@ class Preguntas extends Component
                 'id' => $config->id,
                 'tipo_respuesta_id' => (string) $config->tipo_respuesta_id,
                 'escala_id' => $config->escala_id ? (string) $config->escala_id : '',
-                'opciones' => $config->opcionesRespuesta->map(fn ($op) => [
+                'opciones' => $config->opcionesRespuesta->map(fn($op) => [
                     'id' => $op->id,
                     'valor' => $op->valor,
                     'etiqueta' => $op->etiqueta,
@@ -406,16 +410,36 @@ class Preguntas extends Component
         $this->resetValidation();
     }
 
-    public function updatedBuscar(): void { $this->resetPage(); }
-    public function updatedFiltroNps(): void { $this->resetPage(); }
-    public function updatedFiltroFactor(): void { $this->filtroTema = ''; $this->resetPage(); }
-    public function updatedFiltroTema(): void { $this->resetPage(); }
-    public function updatedFiltroTipo(): void { $this->resetPage(); }
-
+    public function updatedBuscar(): void
+    {
+        $this->resetPage();
+    }
+    public function updatedFiltroNps(): void
+    {
+        $this->resetPage();
+    }
+    public function updatedFiltroFactor(): void
+    {
+        $this->filtroTema = '';
+        $this->resetPage();
+    }
+    public function updatedFiltroTema(): void
+    {
+        $this->resetPage();
+    }
+    public function updatedFiltroTipo(): void
+    {
+        $this->resetPage();
+    }
+    public function updatedFiltroPredeterminada(): void
+    {
+        $this->resetPage();
+    }
     public function limpiarFiltros(): void
     {
         $this->buscar = '';
         $this->filtroNps = 'todos';
+        $this->filtroPredeterminada = 'todos';
         $this->filtroFactor = '';
         $this->filtroTema = '';
         $this->filtroTipo = '';
@@ -427,13 +451,20 @@ class Preguntas extends Component
         $consulta = Pregunta::with(['factor', 'tema', 'tiposRespuesta']);
         if (trim($this->buscar) !== '') {
             $buscar = trim($this->buscar);
-            $consulta->where(fn ($q) => $q->where('texto', 'like', "%{$buscar}%")->orWhere('codigo', 'like', "%{$buscar}%"));
+            $consulta->where(fn($q) => $q->where('texto', 'like', "%{$buscar}%")->orWhere('codigo', 'like', "%{$buscar}%"));
         }
         if ($this->filtroNps === 'nps') {
             $consulta->where('es_nps', true);
         } elseif ($this->filtroNps === 'no-nps') {
             $consulta->where('es_nps', false);
         }
+        // Filtrar preguntas predeterminadas
+        if ($this->filtroPredeterminada === 'predeterminadas') {
+            $consulta->where('es_predeterminada', true);
+        } elseif ($this->filtroPredeterminada === 'no-predeterminadas') {
+            $consulta->where('es_predeterminada', false);
+        }
+
         if ($this->filtroFactor !== '') {
             $consulta->where('factor_id', (int) $this->filtroFactor);
         }
@@ -441,7 +472,7 @@ class Preguntas extends Component
             $consulta->where('tema_id', (int) $this->filtroTema);
         }
         if ($this->filtroTipo !== '') {
-            $consulta->whereHas('tiposRespuesta', fn ($q) => $q->where('tipos_respuesta.id', (int) $this->filtroTipo));
+            $consulta->whereHas('tiposRespuesta', fn($q) => $q->where('tipos_respuesta.id', (int) $this->filtroTipo));
         }
         return view('livewire.administracion.preguntas', [
             'preguntas' => $consulta->orderByDesc('id')->paginate(5),
@@ -450,6 +481,8 @@ class Preguntas extends Component
             'tiposRespuesta' => TipoRespuesta::orderBy('nombre')->get(),
             'escalas' => Escala::orderBy('nombre')->get(),
             'totalPredeterminadas' => Pregunta::where('activo', true)->where('es_predeterminada', true)->count(),
+            'totalActivas' => Pregunta::where('activo', true)->count(),
+            'totalInactivas' => Pregunta::where('activo', false)->count(),
         ]);
     }
 }
