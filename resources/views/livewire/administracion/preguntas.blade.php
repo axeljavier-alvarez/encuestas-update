@@ -53,6 +53,11 @@
             {{ session('mensaje') }}
         </div>
     @endif
+    @error('es_predeterminada')
+        <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+            {{ $message }}
+        </div>
+    @enderror
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 space-y-4">
         <!-- encabezado tabla-->
 
@@ -77,6 +82,16 @@
                 <flux:badge color="blue" size="sm">
                     {{ $preguntas->total() }} preguntas
                 </flux:badge>
+            </div>
+
+            {{-- Resumen de preguntas predeterminadas activas --}}
+            <div class="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+                <p class="text-xs font-semibold text-blue-900">
+                    Preguntas predeterminadas activas: {{ $totalPredeterminadas }} de 2
+                </p>
+                <p class="mt-1 text-xs text-blue-700">
+                    Espacios disponibles en cada plantilla: {{ 10 - $totalPredeterminadas }} de 10
+                </p>
             </div>
 
             {{-- Buscador principal --}}
@@ -196,6 +211,9 @@
                                         NPS
                                     </flux:badge>
                                 @endif
+                                @if ($pregunta->es_predeterminada)
+                                    <flux:badge variant="pill" color="blue" size="sm">Predeterminada</flux:badge>
+                                @endif
                             </div>
                         </flux:table.cell>
                         <flux:table.cell>
@@ -277,6 +295,33 @@
                 </div>
                 @error('obligatoria') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
+
+            {{-- Solo se puede configurar en preguntas existentes y activas.
+                 predeterminadaOriginal mantiene visible el control hasta guardar. --}}
+            @if ($preguntaId && $activo && ($predeterminadaOriginal || $totalPredeterminadas < 2))
+                <div class="rounded-xl border border-blue-200 bg-blue-50/50 p-4 space-y-3">
+                    <p class="text-sm font-bold text-slate-900">
+                        ¿Desea que esta pregunta aparezca en todas las plantillas?
+                    </p>
+                    <p class="text-xs text-slate-600">
+                        Se permiten como máximo 2 preguntas predeterminadas activas.
+                        Una pregunta predeterminada es obligatoria.
+                    </p>
+                    <flux:checkbox
+                        wire:key="predeterminada-{{ $preguntaId }}"
+                        wire:model.live="es_predeterminada"
+                        label="Marcar como pregunta predeterminada"
+                    />
+                    @if ($predeterminadaOriginal && !$es_predeterminada)
+                        <p class="text-xs font-semibold text-amber-700">
+                            Al guardar, esta pregunta dejará de ser predeterminada.
+                        </p>
+                    @endif
+                    @error('es_predeterminada')
+                        <p class="text-xs font-bold text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+            @endif
 
             <flux:select wire:model.live="factorId" label="Factor">
                 <option value="">Seleccione un factor</option>

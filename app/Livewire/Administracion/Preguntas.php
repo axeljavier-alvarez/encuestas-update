@@ -27,6 +27,8 @@ class Preguntas extends Component
     public string $texto = '';
     public string $codigo = '';
     public bool $obligatoria = false;
+    public bool $es_predeterminada = false;
+    public bool $predeterminadaOriginal = false;
     public string $filtroFactor = '';
     public string $filtroTema = '';
     public string $filtroTipo = '';
@@ -169,6 +171,7 @@ class Preguntas extends Component
             'temaId' => ['required', 'exists:temas,id'],
             'codigo' => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9_-]+$/', Rule::unique('preguntas', 'codigo')->ignore($this->preguntaId)],
             'obligatoria' => ['required', 'boolean'],
+            'es_predeterminada' => ['required', 'boolean'],
             'texto' => ['required', 'string', 'max:65535'],
             'es_nps' => ['boolean'],
             'configuraciones' => ['required', 'array', 'min:1'],
@@ -226,14 +229,42 @@ class Preguntas extends Component
 
         $esEdicion = $this->preguntaId !== null;
         DB::transaction(function () use ($esEdicion, $tipos) {
-            $pregunta = $esEdicion ? Pregunta::findOrFail($this->preguntaId) : new Pregunta();
+            // Usar el mismo bloqueo que cambiarEstado() para serializar cambios.
+            $preguntasBloqueadas = Pregunta::query()->orderBy('id')->lockForUpdate()->get();
+            $pregunta = $esEdicion
+                ? $preguntasBloqueadas->firstWhere('id', $this->preguntaId)
+                : new Pregunta();
+
+            if ($esEdicion && !$pregunta) {
+                abort(404);
+            }
+
+            if ($this->es_predeterminada) {
+                if (!$esEdicion || !$pregunta->activo) {
+                    throw ValidationException::withMessages([
+                        'es_predeterminada' => 'Solo una pregunta activa y existente puede ser predeterminada.',
+                    ]);
+                }
+
+                $totalOtras = $preguntasBloqueadas->filter(
+                    fn ($item) => $item->activo && $item->es_predeterminada && $item->id !== $pregunta->id
+                )->count();
+
+                if ($totalOtras >= 2) {
+                    throw ValidationException::withMessages([
+                        'es_predeterminada' => 'Ya existen 2 preguntas predeterminadas activas. Desmarque una antes de seleccionar otra.',
+                    ]);
+                }
+            }
+
             $pregunta->fill([
                 'codigo' => trim($this->codigo),
                 'factor_id' => $this->factorId,
                 'tema_id' => $this->temaId,
                 'texto' => trim($this->texto),
                 'es_nps' => $this->es_nps,
-                'obligatoria' => $this->obligatoria,
+                'obligatoria' => $this->es_predeterminada ? true : $this->obligatoria,
+                'es_predeterminada' => $this->es_predeterminada,
             ]);
             if (!$esEdicion) {
                 $pregunta->activo = false;
@@ -303,6 +334,8 @@ class Preguntas extends Component
         $this->texto = $pregunta->texto;
         $this->codigo = (string) $pregunta->codigo;
         $this->obligatoria = (bool) $pregunta->obligatoria;
+        $this->es_predeterminada = (bool) $pregunta->es_predeterminada;
+        $this->predeterminadaOriginal = (bool) $pregunta->es_predeterminada;
         $this->variosTipos = $pregunta->configuracionesRespuesta->count() > 1;
 
         foreach ($pregunta->configuracionesRespuesta as $config) {
@@ -333,8 +366,26 @@ class Preguntas extends Component
 
     public function cambiarEstado(int $preguntaId): void
     {
-        $pregunta = Pregunta::findOrFail($preguntaId);
-        $pregunta->update(['activo' => !$pregunta->activo]);
+        DB::transaction(function () use ($preguntaId) {
+            // Mismo orden de bloqueo que guardar().
+            $preguntasBloqueadas = Pregunta::query()->orderBy('id')->lockForUpdate()->get();
+            $pregunta = $preguntasBloqueadas->firstWhere('id', $preguntaId);
+
+            if (!$pregunta) {
+                abort(404);
+            }
+
+            if ($pregunta->activo && $pregunta->es_predeterminada) {
+                throw ValidationException::withMessages([
+                    'es_predeterminada' => 'Primero edite la pregunta y desmarque Predeterminada antes de desactivarla.',
+                ]);
+            }
+
+            $pregunta->activo = !$pregunta->activo;
+            $pregunta->save();
+        });
+
+        session()->flash('mensaje', 'Estado de la pregunta actualizado correctamente.');
     }
 
     public function updatedFactorId(): void
@@ -350,7 +401,7 @@ class Preguntas extends Component
 
     public function limpiarFormulario(): void
     {
-        $this->reset(['preguntaId', 'factorId', 'temaId', 'texto', 'codigo', 'obligatoria', 'es_nps', 'configuraciones', 'variosTipos', 'siguienteClave']);
+        $this->reset(['preguntaId', 'factorId', 'temaId', 'texto', 'codigo', 'obligatoria', 'es_predeterminada', 'predeterminadaOriginal', 'es_nps', 'configuraciones', 'variosTipos', 'siguienteClave']);
         $this->activo = false;
         $this->resetValidation();
     }
@@ -398,6 +449,7 @@ class Preguntas extends Component
             'temas' => Tema::where('activo', true)->orderBy('nombre')->get(),
             'tiposRespuesta' => TipoRespuesta::orderBy('nombre')->get(),
             'escalas' => Escala::orderBy('nombre')->get(),
+            'totalPredeterminadas' => Pregunta::where('activo', true)->where('es_predeterminada', true)->count(),
         ]);
     }
 }

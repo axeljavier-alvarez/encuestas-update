@@ -16,6 +16,7 @@ class Pregunta extends Model
         'es_nps',
         'activo',
         'obligatoria',
+        'es_predeterminada',
     ];
 
     protected function casts(): array
@@ -24,8 +25,16 @@ class Pregunta extends Model
             'es_nps' => 'boolean',
             'activo' => 'boolean',
             'obligatoria' => 'boolean',
+            'es_predeterminada' => 'boolean',
         ];
     }
+
+    public function scopePredeterminadasActivas($query)
+    {
+        return $query->where('es_predeterminada', true)
+            ->where('activo', true);
+    }
+
 
     public function factor()
     {
@@ -45,8 +54,8 @@ class Pregunta extends Model
             'pregunta_id',
             'plantilla_id'
         )
-        ->withPivot('orden')
-        ->withTimestamps();
+            ->withPivot('orden')
+            ->withTimestamps();
     }
 
     // Una pregunta admite uno o varios tipos de respuesta
@@ -58,8 +67,8 @@ class Pregunta extends Model
             'pregunta_id',
             'tipo_respuesta_id'
         )
-        ->withPivot('id', 'escala_id')
-        ->withTimestamps();
+            ->withPivot('id', 'escala_id')
+            ->withTimestamps();
     }
 
     // Configuraciones concretas de la pregunta
