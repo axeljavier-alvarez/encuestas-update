@@ -19,6 +19,13 @@ return new class extends Migration
                 ->constrained('preguntas')
                 ->cascadeOnDelete();
 
+            // Tipo de respuesta elegido para esta pregunta
+            $table->foreignId('tipo_respuesta_id')
+                ->nullable()
+                ->constrained('tipos_respuesta')
+                ->restrictOnDelete();
+
+            // Orden de presentación
             $table->unsignedTinyInteger('orden')->nullable();
 
             $table->timestamps();

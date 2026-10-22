@@ -42,10 +42,8 @@ class Plantilla extends Model
             'plantilla_id',
             'pregunta_id'
         )
-        ->withPivot('orden')
-        ->withTimestamps();
+            ->withPivot('orden', 'tipo_respuesta_id')
+            ->withTimestamps()
+            ->orderByPivot('orden');
     }
-
-
-
 }

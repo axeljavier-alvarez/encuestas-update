@@ -475,7 +475,7 @@ class Preguntas extends Component
             $consulta->whereHas('tiposRespuesta', fn($q) => $q->where('tipos_respuesta.id', (int) $this->filtroTipo));
         }
         return view('livewire.administracion.preguntas', [
-            'preguntas' => $consulta->orderByDesc('id')->paginate(5),
+            'preguntas' => $consulta->orderByDesc('id')->paginate(10),
             'factores' => Factor::where('activo', true)->orderBy('nombre')->get(),
             'temas' => Tema::where('activo', true)->orderBy('nombre')->get(),
             'tiposRespuesta' => TipoRespuesta::orderBy('nombre')->get(),
