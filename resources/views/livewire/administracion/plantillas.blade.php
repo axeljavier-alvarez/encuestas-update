@@ -399,100 +399,138 @@
                             $seleccionada = in_array($pregunta->id, $preguntasSeleccionadas);
 
                             $limiteAlcanzado = count($preguntasSeleccionadas) >= 10;
+
+                            $tipos = $pregunta->tiposRespuesta;
                         @endphp
 
-                        <label wire:key="pregunta-banco-{{ $pregunta->id }}"
-                            class="flex items-start gap-3 rounded-xl border
-                               border-slate-200 p-4 transition
-                               hover:bg-slate-50">
+                        <div wire:key="pregunta-banco-{{ $pregunta->id }}"
+                            class="rounded-xl border p-4 transition
+                       {{ $seleccionada ? 'border-blue-300 bg-blue-50/40' : 'border-slate-200 bg-white' }}">
 
-                            <input type="checkbox" wire:model.live="preguntasSeleccionadas"
-                                value="{{ $pregunta->id }}" @disabled($pregunta->es_predeterminada || (!$seleccionada && $limiteAlcanzado))
-                                class="mt-1 h-4 w-4 rounded border-slate-300">
+                            <div class="flex items-start gap-3">
 
-                            <div class="min-w-0 flex-1 space-y-2">
+                                {{-- CHECKBOX --}}
+                                <input type="checkbox" wire:model.live="preguntasSeleccionadas"
+                                    value="{{ $pregunta->id }}" @disabled($pregunta->es_predeterminada || (!$seleccionada && $limiteAlcanzado))
+                                    class="mt-1 h-4 w-4 rounded border-slate-300">
 
-                                <div class="flex flex-wrap items-center gap-2">
+                                {{-- INFORMACIÓN --}}
+                                <div class="min-w-0 flex-1 space-y-3">
 
-                                    <span class="text-xs font-bold text-slate-400">
-                                        #{{ $pregunta->id }}
-                                    </span>
+                                    <div class="flex flex-wrap items-center gap-2">
 
-                                    @if ($pregunta->es_predeterminada)
-                                        <flux:badge size="sm" color="emerald">
-                                            Predeterminada
+                                        <span class="text-xs font-bold text-slate-400">
+                                            #{{ $pregunta->id }}
+                                        </span>
+
+                                        @if ($pregunta->es_predeterminada)
+                                            <flux:badge size="sm" color="emerald">
+                                                Predeterminada
+                                            </flux:badge>
+                                        @endif
+
+                                    </div>
+
+                                    <p class="text-sm font-semibold text-slate-900">
+                                        {{ $pregunta->texto }}
+                                    </p>
+
+                                    <div class="flex flex-wrap gap-2">
+
+                                        <flux:badge size="sm" color="blue">
+                                            {{ $pregunta->factor?->nombre ?? 'Sin factor' }}
                                         </flux:badge>
+
+                                        @if ($pregunta->tema)
+                                            <flux:badge size="sm" color="zinc">
+                                                {{ $pregunta->tema->nombre }}
+                                            </flux:badge>
+                                        @endif
+
+                                    </div>
+
+                                    {{-- TIPO DE RESPUESTA --}}
+                                    @if ($seleccionada && $tipos->count() > 1)
+                                        <div class="border-t border-slate-200 pt-3">
+
+                                            <flux:select wire:key="tipo-pregunta-{{ $pregunta->id }}"
+                                                wire:model.live="tiposRespuestaSeleccionados.{{ $pregunta->id }}"
+                                                label="Tipo de respuesta" placeholder="Seleccione un tipo">
+
+                                                <flux:select.option value="">
+                                                    Seleccione un tipo
+                                                </flux:select.option>
+
+                                                @foreach ($tipos as $tipo)
+                                                    <flux:select.option value="{{ $tipo->id }}">
+                                                        {{ $tipo->nombre }}
+                                                    </flux:select.option>
+                                                @endforeach
+
+                                            </flux:select>
+
+                                        </div>
                                     @endif
 
-                                </div>
-
-                                <p class="text-sm font-semibold text-slate-900">
-                                    {{ $pregunta->texto }}
-                                </p>
-
-                                <div class="flex flex-wrap gap-2">
-
-                                    <flux:badge size="sm" color="blue">
-                                        {{ $pregunta->factor?->nombre ?? 'Sin factor' }}
-                                    </flux:badge>
-
-                                    @if ($pregunta->tema)
-                                        <flux:badge size="sm" color="zinc">
-                                            {{ $pregunta->tema->nombre }}
-                                        </flux:badge>
+                                    @if ($seleccionada && $tipos->isEmpty())
+                                        <p class="text-xs font-semibold text-red-600">
+                                            Esta pregunta no tiene tipos de respuesta configurados.
+                                        </p>
                                     @endif
 
                                 </div>
 
                             </div>
 
-                        </label>
+                        </div>
 
                     @empty
+
                         <p class="col-span-full py-8 text-center text-sm text-slate-500">
                             No se encontraron preguntas activas.
                         </p>
+
                     @endforelse
 
                 </div>
+
+
+                {{-- ERRORES --}}
+                @error('preguntasSeleccionadas')
+                    <p class="text-sm font-semibold text-red-600">
+                        {{ $message }}
+                    </p>
+                @enderror
+
+                @error('tiposRespuestaSeleccionados')
+                    <p class="text-sm font-semibold text-red-600">
+                        {{ $message }}
+                    </p>
+                @enderror
+
+                {{-- BOTONES --}}
+                <div class="flex shrink-0 justify-end gap-3 border-t border-slate-200 pt-4">
+
+                    <flux:button type="button" variant="subtle" wire:click="cerrarModalPreguntas">
+                        Cancelar
+                    </flux:button>
+
+                    <flux:button type="button" variant="primary" wire:click="guardarPreguntas"
+                        wire:loading.attr="disabled" wire:target="guardarPreguntas">
+
+                        <span wire:loading.remove wire:target="guardarPreguntas">
+                            Guardar selección
+                        </span>
+
+                        <span wire:loading wire:target="guardarPreguntas">
+                            Guardando...
+                        </span>
+
+                    </flux:button>
+
+                </div>
+
             </div>
-
-            {{-- ERRORES --}}
-            @error('preguntasSeleccionadas')
-                <p class="text-sm font-semibold text-red-600">
-                    {{ $message }}
-                </p>
-            @enderror
-
-            @error('tiposRespuestaSeleccionados')
-                <p class="text-sm font-semibold text-red-600">
-                    {{ $message }}
-                </p>
-            @enderror
-
-            {{-- BOTONES --}}
-            <div class="flex shrink-0 justify-end gap-3 border-t border-slate-200 pt-4">
-
-                <flux:button type="button" variant="subtle" wire:click="cerrarModalPreguntas">
-                    Cancelar
-                </flux:button>
-
-                <flux:button type="button" variant="primary" wire:click="guardarPreguntas"
-                    wire:loading.attr="disabled" wire:target="guardarPreguntas">
-
-                    <span wire:loading.remove wire:target="guardarPreguntas">
-                        Guardar selección
-                    </span>
-
-                    <span wire:loading wire:target="guardarPreguntas">
-                        Guardando...
-                    </span>
-
-                </flux:button>
-
-            </div>
-
-        </div>
 
     </flux:modal>
     <x-confirmacion nombre="confirmar-estado-plantilla" :titulo="$nuevoEstadoPlantilla ? 'Activar plantilla' : 'Desactivar plantilla'" :mensaje="$nuevoEstadoPlantilla
